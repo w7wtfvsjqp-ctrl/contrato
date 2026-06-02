@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Gerador de Contratos – TSP</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --iron: #1a1a1a;
+    --steel: #2c2c2c;
+    --rust: #b84a1e;
+    --rust-light: #d4612e;
+    --silver: #e8e4df;
+    --paper: #f5f2ed;
+    --muted: #888;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    background: var(--iron);
+    color: var(--silver);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--steel);
+    padding: 18px 20px 14px;
+    border-bottom: 3px solid var(--rust);
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .app-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    letter-spacing: .5px;
+    color: #fff;
+  }
+  .app-header span { font-size: .72rem; color: var(--muted); display: block; margin-top: 2px; }
+  .btn-settings {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: 1.4rem; padding: 4px;
+    transition: color .2s;
+  }
+  .btn-settings:hover { color: var(--rust); }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; background: var(--steel);
+    border-bottom: 1px solid #333;
+  }
+  .tab {
+    flex: 1; padding: 11px 4px; text-align: center;
+    font-size: .78rem; font-weight: 600; letter-spacing: .5px;
+    color: var(--muted); cursor: pointer; border: none;
+    background: none; text-transform: uppercase;
+    border-bottom: 3px solid transparent;
+    transition: all .2s;
+  }
+  .tab.active { color: var(--rust-light); border-bottom-color: var(--rust); }
+
+  /* ── SCREENS ── */
+  .screen { display: none; padding: 20px 16px 100px; }
+  .screen.active { display: block; }
+
+  /* ── CHAT ── */
+  .chat-area {
+    display: flex; flex-direction: column; gap: 12px;
+    min-height: 60px;
+  }
+  .bubble {
+    max-width: 88%; padding: 12px 15px;
+    border-radius: var(--radius); font-size: .9rem; line-height: 1.55;
+    animation: fadeUp .3s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(8px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .bubble.bot {
+    background: var(--steel);
+    border: 1px solid #3a3a3a;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+  }
+  .bubble.user {
+    background: var(--rust);
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+  }
+  .bubble strong { color: var(--rust-light); }
+
+  .chat-input-row {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--steel);
+    border-top: 2px solid var(--rust);
+    padding: 10px 12px;
+    display: flex; gap: 8px; align-items: flex-end;
+  }
+  .chat-input {
+    flex: 1; background: #111; border: 1px solid #444;
+    color: var(--silver); border-radius: 8px;
+    padding: 10px 12px; font-size: .9rem; resize: none;
+    font-family: inherit; max-height: 120px;
+    outline: none;
+  }
+  .chat-input:focus { border-color: var(--rust); }
+  .btn-send {
+    background: var(--rust); color: #fff;
+    border: none; border-radius: 8px;
+    padding: 10px 16px; font-size: 1.1rem;
+    cursor: pointer; transition: background .2s;
+    flex-shrink: 0;
+  }
+  .btn-send:hover { background: var(--rust-light); }
+
+  .option-btns {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
+  }
+  .opt-btn {
+    background: #111; border: 1px solid var(--rust);
+    color: var(--rust-light); border-radius: 20px;
+    padding: 7px 14px; font-size: .82rem; cursor: pointer;
+    transition: all .2s; font-family: inherit;
+  }
+  .opt-btn:hover, .opt-btn.selected {
+    background: var(--rust); color: #fff; border-color: var(--rust);
+  }
+
+  /* ── CONTRATO VIEW ── */
+  #contract-preview {
+    background: #fff; color: #111;
+    border-radius: var(--radius);
+    padding: 28px 22px;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: .82rem; line-height: 1.7;
+    white-space: pre-wrap;
+    box-shadow: 0 4px 24px rgba(0,0,0,.5);
+  }
+  .contract-header-co {
+    text-align: center;
+    border-bottom: 2px solid #b84a1e;
+    padding-bottom: 12px; margin-bottom: 18px;
+  }
+  .contract-header-co strong {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem; display: block;
+    color: #b84a1e;
+    letter-spacing: .5px;
+  }
+  .contract-header-co small { color: #555; font-size: .77rem; }
+  .contract-title {
+    font-family: 'Playfair Display', serif;
+    text-align: center; font-size: 1rem;
+    color: #1a1a1a; margin: 14px 0 18px;
+    border-bottom: 1px solid #ddd; padding-bottom: 10px;
+  }
+  .contract-section { margin-bottom: 14px; }
+  .contract-section .clause {
+    font-weight: 700; font-size: .83rem;
+    color: #b84a1e; text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .contract-footer {
+    margin-top: 20px; border-top: 1px solid #ddd;
+    padding-top: 14px; font-size: .8rem; color: #555;
+    text-align: center;
+  }
+  .sign-block {
+    display: flex; flex-wrap: wrap; gap: 16px;
+    margin-top: 20px;
+  }
+  .sign-item {
+    flex: 1; min-width: 140px;
+    border-top: 1px solid #333;
+    padding-top: 6px; font-size: .78rem; color: #333;
+  }
+
+  /* ── ACTION BUTTONS ── */
+  .action-row {
+    display: flex; gap: 10px; margin-top: 14px;
+  }
+  .btn-action {
+    flex: 1; padding: 12px; border: none; border-radius: var(--radius);
+    font-size: .85rem; font-weight: 600; cursor: pointer;
+    font-family: inherit; transition: all .2s;
+  }
+  .btn-action.primary { background: var(--rust); color: #fff; }
+  .btn-action.primary:hover { background: var(--rust-light); }
+  .btn-action.secondary {
+    background: #222; color: var(--silver);
+    border: 1px solid #444;
+  }
+  .btn-action.secondary:hover { border-color: var(--rust); color: var(--rust-light); }
+
+  /* ── SETTINGS ── */
+  .settings-card {
+    background: var(--steel); border-radius: var(--radius);
+    padding: 18px; border: 1px solid #3a3a3a; margin-bottom: 14px;
+  }
+  .settings-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: .95rem; color: var(--rust-light);
+    margin-bottom: 14px;
+    border-bottom: 1px solid #3a3a3a; padding-bottom: 8px;
+  }
+  .field-group { margin-bottom: 12px; }
+  .field-group label {
+    display: block; font-size: .75rem;
+    color: var(--muted); margin-bottom: 4px;
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .field-group input, .field-group textarea {
+    width: 100%; background: #111; border: 1px solid #444;
+    color: var(--silver); border-radius: 8px;
+    padding: 10px 12px; font-size: .88rem;
+    font-family: inherit; outline: none;
+  }
+  .field-group input:focus, .field-group textarea:focus {
+    border-color: var(--rust);
+  }
+  .field-group textarea { resize: vertical; min-height: 70px; }
+
+  .tag-badge {
+    display: inline-block; background: var(--rust);
+    color: #fff; border-radius: 20px;
+    padding: 2px 10px; font-size: .72rem;
+    font-weight: 600; margin-left: 6px; vertical-align: middle;
+  }
+
+  /* ── HISTORY ── */
+  .history-item {
+    background: var(--steel); border-radius: var(--radius);
+    padding: 14px; margin-bottom: 10px;
+    border-left: 3px solid var(--rust);
+    cursor: pointer; transition: opacity .2s;
+  }
+  .history-item:hover { opacity: .85; }
+  .history-item .hi-name { font-weight: 600; font-size: .9rem; }
+  .history-item .hi-date { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+  .history-item .hi-val { font-size: .78rem; color: var(--rust-light); margin-top: 4px; }
+  .empty-state { text-align: center; color: var(--muted); font-size: .85rem; padding: 40px 0; }
+
+  /* ── MODAL DE EDIÇÃO ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.75); z-index: 999;
+    align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--steel); border-radius: var(--radius);
+    border: 1px solid #3a3a3a; width: 100%; max-width: 480px;
+    max-height: 85vh; overflow-y: auto;
+    padding: 20px;
+  }
+  .modal-box h3 {
+    font-family: 'Playfair Display', serif;
+    color: var(--rust-light); font-size: 1rem;
+    margin-bottom: 16px; border-bottom: 1px solid #3a3a3a; padding-bottom: 8px;
+  }
+  .modal-actions {
+    display: flex; gap: 10px; margin-top: 16px;
+  }
+
+  /* ── CALENDAR PICKER ── */
+  .date-picker-wrap { position: relative; }
+  .date-picker-pop {
+    display: none; position: fixed;
+    left: 50%; transform: translateX(-50%);
+    bottom: 80px; z-index: 999;
+    background: var(--steel); border: 1px solid var(--rust);
+    border-radius: var(--radius); padding: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.6);
+    min-width: 300px;
+  }
+  .date-picker-pop.open { display: block; }
+  .dp-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .dp-header span {
+    font-weight: 600; font-size: .9rem; color: var(--rust-light);
+  }
+  .dp-nav {
+    background: none; border: none; color: var(--muted);
+    font-size: 1.2rem; cursor: pointer; padding: 2px 8px;
+    transition: color .2s;
+  }
+  .dp-nav:hover { color: var(--rust-light); }
+  .dp-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 2px; text-align: center;
+  }
+  .dp-day-name {
+    font-size: .65rem; color: var(--muted);
+    padding: 4px 0; text-transform: uppercase;
+  }
+  .dp-day {
+    font-size: .8rem; padding: 6px 2px; border-radius: 6px;
+    cursor: pointer; transition: background .15s; color: var(--silver);
+    border: none; background: none;
+  }
+  .dp-day:hover { background: var(--rust); color: #fff; }
+  .dp-day.today { border: 1px solid var(--rust); color: var(--rust-light); }
+  .dp-day.selected { background: var(--rust); color: #fff; }
+  .dp-day.empty { cursor: default; }
+
+  /* ── PRINT / PDF ── */
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    html, body { margin: 0; padding: 0; background: #fff !important; }
+    .app-header, .tabs, .chat-input-row, .action-row,
+    .tab, .btn-settings, .modal-overlay, .date-picker-pop { display: none !important; }
+    .screen { display: none !important; padding: 0; }
+    #tab-contract { display: block !important; padding: 0; }
+    #contract-preview {
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      font-size: 11pt !important;
+      line-height: 1.65 !important;
+      color: #111 !important;
+      background: #fff !important;
+      width: 100% !important;
+    }
+    @page {
+      size: A4;
+      margin: 20mm 18mm 20mm 18mm;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <h1>⚙ Gerador de Contratos</h1>
+    <span id="co-name-header">Toldos e Serralheria Pires</span>
+  </div>
+  <button class="btn-settings" onclick="goTab('settings')" title="Configurações">⚙</button>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="goTab('chat')">✦ Assistente</button>
+  <button class="tab" onclick="goTab('contract')">📄 Contrato</button>
+  <button class="tab" onclick="goTab('history')">🗂 Histórico</button>
+  <button class="tab" onclick="goTab('settings')">⚙ Empresa</button>
+</div>
+
+<!-- ══ CHAT ══ -->
+<div id="tab-chat" class="screen active">
+  <div class="chat-area" id="chat-area"></div>
+</div>
+<div class="chat-input-row" id="chat-input-row">
+  <textarea class="chat-input" id="chat-input" rows="1" placeholder="Digite sua resposta…"></textarea>
+  <button class="btn-send" onclick="sendMsg()">➤</button>
+</div>
+
+<!-- ══ CONTRATO ══ -->
+<div id="tab-contract" class="screen">
+  <div id="contract-preview">
+    <p style="text-align:center;color:#aaa;padding:40px 0;font-style:italic;">
+      Complete o assistente para gerar o contrato.
+    </p>
+  </div>
+  <div class="action-row">
+    <button class="btn-action secondary" onclick="exportPDF()">📄 Exportar PDF</button>
+    <button class="btn-action primary" onclick="saveToHistory()">💾 Salvar</button>
+  </div>
+  <div class="action-row" style="margin-top:0">
+    <button class="btn-action secondary" onclick="newContract()">＋ Novo Contrato</button>
+  </div>
+</div>
+
+<!-- ══ HISTÓRICO ══ -->
+<div id="tab-history" class="screen">
+  <div id="history-list"></div>
+</div>
+
+<!-- ══ MODAL EDIÇÃO ══ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <h3>✎ Editar Contrato</h3>
+    <div id="edit-fields"></div>
+    <div class="modal-actions">
+      <button class="btn-action primary" onclick="saveEditModal()">💾 Salvar</button>
+      <button class="btn-action secondary" onclick="closeEditModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DATE PICKER ══ -->
+<div class="date-picker-pop" id="date-picker">
+  <div class="dp-header">
+    <button class="dp-nav" onclick="dpMove(-1)">‹</button>
+    <span id="dp-label"></span>
+    <button class="dp-nav" onclick="dpMove(1)">›</button>
+  </div>
+  <div class="dp-grid" id="dp-grid"></div>
+</div>
+
+<!-- ══ CONFIGURAÇÕES ══ -->
+<div id="tab-settings" class="screen">
+  <div class="settings-card">
+    <h3>Dados da Empresa</h3>
+    <div class="field-group">
+      <label>Nome da Empresa</label>
+      <input type="text" id="s-name" placeholder="Toldos e Serralheria Pires">
+    </div>
+    <div class="field-group">
+      <label>CNPJ</label>
+      <input type="text" id="s-cnpj" placeholder="00.000.000/0001-00">
+    </div>
+    <div class="field-group">
+      <label>Endereço</label>
+      <input type="text" id="s-addr" placeholder="Rua, número, bairro">
+    </div>
+    <div class="field-group">
+      <label>Cidade / Estado</label>
+      <input type="text" id="s-city" placeholder="Navegantes/SC">
+    </div>
+    <div class="field-group">
+      <label>Telefone</label>
+      <input type="text" id="s-tel" placeholder="(47) 9 9141-0555">
+    </div>
+    <div class="field-group">
+      <label>E-mail</label>
+      <input type="text" id="s-email" placeholder="email@empresa.com">
+    </div>
+    <button class="btn-action primary" onclick="saveSettings()">💾 Salvar Dados</button>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let co = {
+  name: 'Toldos e Serralheria Pires',
+  cnpj: '45.446.577/0001-60',
+  addr: 'Rua Alberto Werner, nº 1057, bairro Gravatá',
+  city: 'Navegantes/SC',
+  tel: '(47) 9 9141-0555',
+  email: 'tspnavegantes@gmail.com'
+};
+let contract = {};
+let step = 0;
+let history = JSON.parse(localStorage.getItem('tsp_history') || '[]');
+
+// ── STEPS ──
+const STEPS = [
+  // 0
+  {
+    bot: 'Olá! 👋 Vou te ajudar a gerar um contrato.\n\n<strong>Qual é o nome completo do cliente?</strong>',
+    field: 'clientName', type: 'text', placeholder: 'Ex: João da Silva'
+  },
+  // 1
+  {
+    bot: 'Qual o <strong>CPF</strong> do cliente?',
+    field: 'clientCpf', type: 'text', placeholder: 'Ex: 000.000.000-00'
+  },
+  // 2
+  {
+    bot: 'Qual o <strong>RG</strong> do cliente? (opcional, deixe em branco se não tiver)',
+    field: 'clientRg', type: 'text', placeholder: 'Ex: 5.000.000 SSP/SC'
+  },
+  // 3
+  {
+    bot: 'Qual é o <strong>endereço completo</strong> do cliente?\n(Rua, número, bairro, cidade)',
+    field: 'clientAddr', type: 'text', placeholder: 'Ex: Rua das Flores, nº 100, Centro, Navegantes/SC'
+  },
+  // 4
+  {
+    bot: '📋 Agora o <strong>objeto do contrato</strong>.\n\nQual serviço será realizado?',
+    field: 'serviceType', type: 'options',
+    options: ['Galpão Metálico', 'Toldo', 'Sombreamento', 'Portão/Grade', 'Cobertura Metálica', 'Outro (descrever)']
+  },
+  // 5
+  {
+    bot: 'Descreva os detalhes do serviço: <strong>dimensões, materiais, acabamentos</strong> e o que mais for relevante.',
+    field: 'serviceDesc', type: 'textarea', placeholder: 'Ex: Galpão metálico 18x8,30m com telhas galvanizadas, colunas 127x50mm, pintura preto fosco...'
+  },
+  // 6
+  {
+    bot: '💰 Qual o <strong>valor total</strong> do contrato? (só números e vírgula)\nEx: 36000,00',
+    field: 'totalValue', type: 'text', placeholder: 'Ex: 36000,00'
+  },
+  // 7
+  {
+    bot: 'Como será feito o <strong>pagamento</strong>?',
+    field: 'paymentType', type: 'options',
+    options: ['À vista na entrega', 'Entrada + saldo na entrega', 'Entrada + saldo parcelado', 'Parcelado', 'Definir manualmente']
+  },
+  // 8 – dynamic
+  { field: '_payment_detail', type: '_payment_detail' },
+  // 9
+  {
+    bot: '⏱ Qual o <strong>prazo de execução</strong> (em dias)?',
+    field: 'deadline', type: 'options',
+    options: ['15 dias', '30 dias', '45 dias', '60 dias', '90 dias', 'Outro (digitar)']
+  },
+  // 10
+  {
+    bot: '🛡 Qual a <strong>garantia</strong> oferecida?',
+    field: 'warranty', type: 'options',
+    options: ['6 meses', '1 ano', '2 anos', 'Sem garantia especificada']
+  },
+  // 11
+  {
+    bot: '📅 Qual a <strong>data</strong> do contrato? Clique no botão para selecionar no calendário.',
+    field: 'contractDate', type: 'datepicker'
+  },
+  // 12 – confirm
+  { field: '_confirm', type: '_confirm' }
+];
+
+// ── INIT ──
+window.addEventListener('load', () => {
+  loadSettings();
+  renderHistory();
+  // Load textarea auto-resize
+  document.getElementById('chat-input').addEventListener('input', function(){
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+  });
+  document.getElementById('chat-input').addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  });
+  showStep(0);
+});
+
+function goTab(t) {
+  document.querySelectorAll('.tab').forEach((el,i)=>{
+    const tabs = ['chat','contract','history','settings'];
+    el.classList.toggle('active', tabs[i] === t);
+  });
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + t).classList.add('active');
+  const row = document.getElementById('chat-input-row');
+  row.style.display = t === 'chat' ? 'flex' : 'none';
+  if (t === 'history') renderHistory();
+}
+
+// ── CHAT LOGIC ──
+function addBubble(text, type) {
+  const area = document.getElementById('chat-area');
+  const div = document.createElement('div');
+  div.className = `bubble ${type}`;
+  div.innerHTML = text.replace(/\n/g,'<br>');
+  area.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return div;
+}
+
+function addOptions(opts, onSelect) {
+  const area = document.getElementById('chat-area');
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble bot option-btns';
+  wrap.style.maxWidth = '100%';
+  opts.forEach(o => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.textContent = o;
+    btn.onclick = () => {
+      wrap.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      onSelect(o);
+    };
+    wrap.appendChild(btn);
+  });
+  area.appendChild(wrap);
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function showStep(s) {
+  step = s;
+  if (s >= STEPS.length) { generateContract(); return; }
+
+  const cur = STEPS[s];
+
+  // Dynamic steps
+  if (cur.type === '_payment_detail') {
+    showPaymentDetail(); return;
+  }
+  if (cur.type === '_confirm') {
+    showConfirm(); return;
+  }
+
+  addBubble(cur.bot, 'bot');
+
+  if (cur.type === 'options') {
+    addOptions(cur.options, (val) => {
+      if (val.includes('Outro') || val.includes('digitar') || val.includes('manualmente')) {
+        addBubble('Digite abaixo 👇', 'bot');
+        enableInput(cur.field, cur.placeholder || 'Digite aqui…', () => showStep(s+1));
+      } else {
+        contract[cur.field] = val;
+        addBubble(val, 'user');
+        setTimeout(() => showStep(s+1), 300);
+      }
+    });
+    disableInput();
+    return;
+  }
+
+  if (cur.type === 'textarea') {
+    enableInput(cur.field, cur.placeholder || '', () => showStep(s+1));
+    return;
+  }
+
+  if (cur.type === 'datepicker') {
+    addBubble(cur.bot, 'bot');
+    disableInput();
+    // Show calendar button as option
+    addOptions(['📅 Abrir Calendário'], () => {
+      openDatePicker((dateStr) => {
+        contract[cur.field] = dateStr;
+        addBubble(dateStr, 'user');
+        setTimeout(() => showStep(s+1), 300);
+      });
+    });
+    return;
+  }
+
+  // Campo RG é opcional: mostrar botão "Pular"
+  if (cur.field === 'clientRg') {
+    enableInput(cur.field, cur.placeholder || '', () => showStep(s+1));
+    addOptions(['Pular (sem RG)'], () => {
+      contract['clientRg'] = '';
+      setTimeout(() => showStep(s+1), 200);
+    });
+    return;
+  }
+
+  enableInput(cur.field, cur.placeholder || '', () => showStep(s+1));
+}
+
+function enableInput(field, ph, next) {
+  const inp = document.getElementById('chat-input');
+  inp.placeholder = ph; inp.value = ''; inp.disabled = false; inp.focus();
+  inp.style.height = 'auto';
+  window._currentField = field;
+  window._currentNext = next;
+}
+
+function disableInput() {
+  const inp = document.getElementById('chat-input');
+  inp.placeholder = 'Selecione uma opção acima ☝'; inp.disabled = true;
+}
+
+function sendMsg() {
+  const inp = document.getElementById('chat-input');
+  const val = inp.value.trim();
+  if (inp.disabled) return;
+
+  // Campo RG é opcional: aceita vazio ou respostas negativas
+  const isRgField = window._currentField === 'clientRg';
+  const negativeRg = /^(n[aã]o|nao\s*tem|n\/a|–|-|s\/n|sem\s*rg|nenhum)?$/i.test(val);
+
+  if (!val && !isRgField) return; // outros campos obrigatórios
+
+  if (isRgField) {
+    const raw = val && !negativeRg ? val : '';
+    contract[window._currentField] = raw ? applyDocMask('clientRg', raw) : '';
+    if (val) addBubble(negativeRg ? '(sem RG)' : contract[window._currentField], 'user');
+  } else {
+    const masked = applyDocMask(window._currentField, val);
+    contract[window._currentField] = masked;
+    addBubble(masked, 'user');
+  }
+
+  inp.value = ''; inp.style.height = 'auto';
+  if (window._currentNext) setTimeout(window._currentNext, 300);
+}
+
+// ── PAYMENT DETAIL ──
+function showPaymentDetail() {
+  const pt = contract.paymentType;
+  if (pt === 'À vista na entrega') {
+    contract.paymentDetail = `O valor total de R$ ${fmt(contract.totalValue)} (${extenso(contract.totalValue)}) será pago integralmente na entrega e conclusão dos serviços.`;
+    setTimeout(() => showStep(step+1), 100);
+    return;
+  }
+  if (pt === 'Entrada + saldo na entrega') {
+    addBubble('Qual o valor da <strong>entrada</strong>?', 'bot');
+    enableInput('_entryValue', 'Ex: 10000,00', () => {
+      const entry = contract['_entryValue'];
+      const rest = calcRest(contract.totalValue, entry);
+      contract.paymentDetail = `• R$ ${fmt(entry)} (${extenso(entry)}) a título de entrada;\n• R$ ${fmt(rest)} (saldo restante) na entrega dos serviços.`;
+      setTimeout(() => showStep(step+1), 300);
+    });
+    return;
+  }
+  if (pt === 'Entrada + saldo parcelado') {
+    addBubble('Qual o valor da <strong>entrada</strong>?', 'bot');
+    enableInput('_entryValue', 'Ex: 10000,00', () => {
+      addBubble('Em quantas <strong>parcelas</strong> o saldo restante?', 'bot');
+      enableInput('_parcelas', 'Ex: 3', () => {
+        const entry = contract['_entryValue'];
+        const parc = contract['_parcelas'];
+        const rest = calcRest(contract.totalValue, entry);
+        const each = (parseFloat(rest.replace(',','.')) / parseInt(parc)).toFixed(2).replace('.',',');
+        contract.paymentDetail = `• R$ ${fmt(entry)} (${extenso(entry)}) a título de entrada;\n• O saldo restante de R$ ${fmt(rest)} será pago em ${parc}x de R$ ${fmt(each)}.`;
+        setTimeout(() => showStep(step+1), 300);
+      });
+    });
+    return;
+  }
+  if (pt === 'Parcelado') {
+    addBubble('Em quantas <strong>parcelas</strong>?', 'bot');
+    enableInput('_parcelas', 'Ex: 4', () => {
+      const parc = contract['_parcelas'];
+      const each = (parseFloat(contract.totalValue.replace(',','.')) / parseInt(parc)).toFixed(2).replace('.',',');
+      contract.paymentDetail = `O valor total será pago em ${parc} parcelas de R$ ${fmt(each)}, conforme cronograma acordado entre as partes.`;
+      setTimeout(() => showStep(step+1), 300);
+    });
+    return;
+  }
+  // Manual
+  addBubble('Descreva livremente a <strong>forma de pagamento</strong>:', 'bot');
+  enableInput('paymentDetail', 'Ex: 50% na assinatura, 50% na entrega…', () => showStep(step+1));
+}
+
+// ── CONFIRM ──
+function showConfirm() {
+  const msg = `✅ Dados coletados com sucesso!\n\n<strong>Cliente:</strong> ${contract.clientName}\n<strong>Serviço:</strong> ${contract.serviceType}\n<strong>Valor:</strong> R$ ${fmt(contract.totalValue)}\n<strong>Prazo:</strong> ${contract.deadline}\n\nDeseja <strong>gerar o contrato</strong> agora?`;
+  addBubble(msg, 'bot');
+  addOptions(['Gerar contrato ✓', '✎ Editar dados'], (val) => {
+    if (val.includes('Gerar')) {
+      generateContract();
+      goTab('contract');
+    } else {
+      newContract();
+    }
+  });
+  disableInput();
+}
+
+// ── BUILD CONTRACT HTML (shared) ──
+function buildContractHtml(d) {
+  const rg = d.clientRg ? `, portador do RG nº ${d.clientRg}` : '';
+  const warranty = d.warranty === 'Sem garantia especificada'
+    ? 'A CONTRATADA não oferece garantia adicional além do previsto em lei.'
+    : `A CONTRATADA concede garantia de ${d.warranty} sobre o serviço executado, contados a partir da aceitação definitiva pelo CONTRATANTE, responsabilizando-se pelas revisões, consertos ou reparos que se fizerem necessários dentro desse período.\n\nA garantia não se aplica aos casos decorrentes de mau uso, utilização inadequada, acidentes, intervenções de terceiros ou eventos climáticos extraordinários, devidamente comprovados.`;
+
+  return `
+  <div class="contract-header-co">
+    <strong>${co.name}</strong>
+    <small>Tel: ${co.tel} &nbsp;|&nbsp; E-mail: ${co.email}</small><br>
+    <small>CNPJ: ${co.cnpj}</small><br>
+    <small>${co.addr} – ${co.city}</small>
+  </div>
+
+  <div class="contract-title">CONTRATO DE FORNECIMENTO E PRESTAÇÃO DE SERVIÇOS</div>
+
+  <div class="contract-section">
+    Celebram entre si, de um lado, <strong>CONTRATANTE</strong>, ${d.clientName}, brasileiro(a), inscrito(a) no CPF nº ${d.clientCpf}${rg}, residente e domiciliado(a) à ${d.clientAddr};
+
+    e, de outro lado, <strong>CONTRATADA</strong>, a empresa ${co.name}, inscrita no CNPJ nº ${co.cnpj}, com sede à ${co.addr}, ${co.city},
+
+    têm entre si justo e contratado o que segue:
+  </div>
+
+  <div class="contract-section">
+    <div class="clause">Cláusula Primeira – Do Objeto</div>
+    Constitui objeto do presente contrato a prestação de serviços de <strong>${d.serviceType}</strong>, conforme especificações a seguir:
+
+${d.serviceDesc}
+  </div>
+
+  <div class="contract-section">
+    <div class="clause">Cláusula Segunda – Do Preço</div>
+    Pelos serviços descritos neste contrato, o CONTRATANTE pagará à CONTRATADA o valor total de <strong>R$ ${fmt(d.totalValue)} (${extenso(d.totalValue)})</strong>.
+
+O pagamento será realizado da seguinte forma:
+${d.paymentDetail}
+  </div>
+
+  <div class="contract-section">
+    <div class="clause">Cláusula Terceira – Do Prazo</div>
+    As partes ajustam o prazo de <strong>${d.deadline}</strong> para a execução dos serviços objeto deste contrato, contado a partir da data de assinatura do presente instrumento, ressalvadas eventuais intercorrências alheias à vontade da CONTRATADA.
+  </div>
+
+  <div class="contract-section">
+    <div class="clause">Cláusula Quarta – Das Obrigações</div>
+    Compete à CONTRATADA o fornecimento de todos os materiais, insumos e mão de obra qualificada, necessários à fiel execução do objeto deste contrato, garantindo o cumprimento das normas técnicas aplicáveis e dos princípios éticos inerentes à atividade.
+  </div>
+
+  <div class="contract-section">
+    <div class="clause">Cláusula Quinta – Das Garantias</div>
+    ${warranty}
+  </div>
+
+  <div class="contract-section">
+    <div class="clause">Cláusula Sexta – Do Foro</div>
+    Fica eleito o foro da Comarca de ${co.city.replace('/SC','')}/SC, com renúncia expressa a qualquer outro, por mais privilegiado que seja, para dirimir quaisquer dúvidas, controvérsias ou omissões oriundas do presente contrato.
+  </div>
+
+  <div class="contract-section">
+    E, por estarem justas e contratadas, as partes assinam o presente instrumento em duas vias de igual teor e forma, na presença de duas testemunhas.
+  </div>
+
+  <div style="margin-top:16px;font-size:.82rem;">
+    ${d.contractDate}, ${co.city}.
+  </div>
+
+  <div class="sign-block">
+    <div class="sign-item">
+      <br>Assinatura: ___________________________<br>
+      <strong>${co.name}</strong><br>
+      CNPJ: ${co.cnpj}
+    </div>
+    <div class="sign-item">
+      <br>Assinatura: ___________________________<br>
+      Nome: ${d.clientName}<br>
+      CPF: ${d.clientCpf}
+    </div>
+    <div class="sign-item">
+      <br>Assinatura: ___________________________<br>
+      Nome: ___________________________<br>
+      CPF: ___________________________<br>
+      <em>Testemunha 1</em>
+    </div>
+    <div class="sign-item">
+      <br>Assinatura: ___________________________<br>
+      Nome: ___________________________<br>
+      CPF: ___________________________<br>
+      <em>Testemunha 2</em>
+    </div>
+  </div>
+
+  <div class="contract-footer">
+    ${co.name} &nbsp;·&nbsp; CNPJ ${co.cnpj}<br>
+    ${co.addr} – ${co.city} &nbsp;·&nbsp; Tel: ${co.tel} &nbsp;·&nbsp; ${co.email}
+  </div>
+  `;
+}
+
+// ── GENERATE CONTRACT ──
+function generateContract() {
+  const d = contract;
+  document.getElementById('contract-preview').innerHTML = buildContractHtml(d);
+  addBubble('🎉 Contrato gerado! Vá para a aba <strong>📄 Contrato</strong> para visualizar, exportar em PDF ou salvar.', 'bot');
+}
+
+// ── SAVE / PRINT / HISTORY ──
+function saveToHistory() {
+  if (!contract.clientName) { alert('Nenhum contrato gerado ainda.'); return; }
+  const entry = {
+    id: Date.now(),
+    clientName: contract.clientName,
+    serviceType: contract.serviceType,
+    totalValue: contract.totalValue,
+    date: contract.contractDate || new Date().toLocaleDateString('pt-BR'),
+    html: document.getElementById('contract-preview').innerHTML
+  };
+  history.unshift(entry);
+  localStorage.setItem('tsp_history', JSON.stringify(history));
+  alert('✅ Contrato salvo no histórico!');
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!history.length) {
+    list.innerHTML = '<div class="empty-state">Nenhum contrato salvo ainda.</div>';
+    return;
+  }
+  list.innerHTML = history.map(h => `
+    <div class="history-item">
+      <div class="hi-name" onclick="loadHistory(${h.id})" style="cursor:pointer">👤 ${h.clientName}</div>
+      <div class="hi-date">📅 ${h.date} &nbsp;·&nbsp; ${h.serviceType}</div>
+      <div class="hi-val">💰 R$ ${fmt(h.totalValue)}</div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="opt-btn" style="font-size:.75rem;padding:5px 12px;" onclick="loadHistory(${h.id})">👁 Ver</button>
+        <button class="opt-btn" style="font-size:.75rem;padding:5px 12px;" onclick="openEditModal(${h.id})">✎ Editar</button>
+        <button class="opt-btn" style="font-size:.75rem;padding:5px 12px;border-color:#c0392b;color:#e74c3c;" onclick="deleteHistory(${h.id})">🗑 Excluir</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function loadHistory(id) {
+  const h = history.find(x => x.id === id);
+  if (!h) return;
+  document.getElementById('contract-preview').innerHTML = h.html;
+  goTab('contract');
+}
+
+function exportPDF() {
+  const preview = document.getElementById('contract-preview');
+  if (!preview.innerHTML.trim() || preview.querySelector('p[style]')) {
+    alert('Nenhum contrato gerado ainda.'); return;
+  }
+  goTab('contract');
+  setTimeout(() => window.print(), 200);
+}
+
+function deleteHistory(id) {
+  if (!confirm('Excluir este contrato do histórico?')) return;
+  history = history.filter(x => x.id !== id);
+  localStorage.setItem('tsp_history', JSON.stringify(history));
+  renderHistory();
+}
+
+// ── EDIT MODAL ──
+let _editId = null;
+const EDIT_LABELS = {
+  clientName: 'Nome do Cliente',
+  clientCpf: 'CPF',
+  clientRg: 'RG (opcional)',
+  clientAddr: 'Endereço do Cliente',
+  serviceType: 'Tipo de Serviço',
+  serviceDesc: 'Descrição do Serviço',
+  totalValue: 'Valor Total (R$)',
+  paymentDetail: 'Forma de Pagamento',
+  deadline: 'Prazo de Execução',
+  warranty: 'Garantia',
+  contractDate: 'Data do Contrato'
+};
+
+function openEditModal(id) {
+  const h = history.find(x => x.id === id);
+  if (!h) return;
+  _editId = id;
+  const fields = document.getElementById('edit-fields');
+  fields.innerHTML = Object.entries(EDIT_LABELS).map(([k, label]) => `
+    <div class="field-group">
+      <label>${label}</label>
+      ${k === 'serviceDesc' || k === 'paymentDetail'
+        ? `<textarea id="ef-${k}" style="min-height:80px">${escHtml(h[k]||'')}</textarea>`
+        : `<input type="text" id="ef-${k}" value="${escHtml(h[k]||'')}">`
+      }
+    </div>
+  `).join('');
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function saveEditModal() {
+  const idx = history.findIndex(x => x.id === _editId);
+  if (idx < 0) return;
+  const h = history[idx];
+  Object.keys(EDIT_LABELS).forEach(k => {
+    const el = document.getElementById('ef-' + k);
+    if (el) h[k] = el.value;
+  });
+  // Rebuild HTML from updated data
+  const tempContract = Object.assign({}, h);
+  const tempHtml = buildContractHtml(tempContract);
+  h.html = tempHtml;
+  h.clientName = h.clientName || h.clientName;
+  h.serviceType = h.serviceType || h.serviceType;
+  h.totalValue = h.totalValue || h.totalValue;
+  localStorage.setItem('tsp_history', JSON.stringify(history));
+  closeEditModal();
+  renderHistory();
+  alert('✅ Contrato atualizado!');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  _editId = null;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── DATE PICKER ──
+let dpYear, dpMonth, dpCallback;
+const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DAYS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MONTHS_EXT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function openDatePicker(cb) {
+  dpCallback = cb;
+  const now = new Date();
+  dpYear = now.getFullYear();
+  dpMonth = now.getMonth();
+  renderCalendar();
+  document.getElementById('date-picker').classList.add('open');
+  document.addEventListener('click', closeDpOutside, true);
+}
+
+function closeDpOutside(e) {
+  const dp = document.getElementById('date-picker');
+  if (!dp.contains(e.target) && !e.target.closest('.dp-trigger')) {
+    dp.classList.remove('open');
+    document.removeEventListener('click', closeDpOutside, true);
+  }
+}
+
+function dpMove(dir) {
+  dpMonth += dir;
+  if (dpMonth > 11) { dpMonth = 0; dpYear++; }
+  if (dpMonth < 0) { dpMonth = 11; dpYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('dp-label').textContent = `${MONTHS_PT[dpMonth]} ${dpYear}`;
+  const grid = document.getElementById('dp-grid');
+  const today = new Date();
+  const first = new Date(dpYear, dpMonth, 1).getDay();
+  const days = new Date(dpYear, dpMonth+1, 0).getDate();
+  let html = DAYS_PT.map(d => `<div class="dp-day-name">${d}</div>`).join('');
+  for (let i=0;i<first;i++) html += `<div class="dp-day empty"></div>`;
+  for (let d=1;d<=days;d++) {
+    const isToday = d===today.getDate()&&dpMonth===today.getMonth()&&dpYear===today.getFullYear();
+    html += `<button class="dp-day${isToday?' today':''}" onclick="dpSelect(${d})">${d}</button>`;
+  }
+  grid.innerHTML = html;
+}
+
+function dpSelect(day) {
+  const dateStr = `${String(day).padStart(2,'0')} de ${MONTHS_EXT[dpMonth]} de ${dpYear}`;
+  document.getElementById('date-picker').classList.remove('open');
+  document.removeEventListener('click', closeDpOutside, true);
+  if (dpCallback) dpCallback(dateStr);
+}
+
+// ── CPF / RG AUTO MASK ──
+function maskCpf(v) {
+  v = v.replace(/\D/g,'');
+  if (v.length !== 11) return null;
+  return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+}
+
+function maskRg(v) {
+  v = v.replace(/\D/g,'');
+  if (v.length === 9) return v.replace(/(\d{1})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  if (v.length === 8) return v.replace(/(\d{1})(\d{3})(\d{3})(\d{1})/, '$1.$2.$3-$4');
+  if (v.length === 7) return v.replace(/(\d{1})(\d{3})(\d{3})/, '$1.$2.$3');
+  return null;
+}
+
+function applyDocMask(field, val) {
+  if (field === 'clientCpf') {
+    const masked = maskCpf(val);
+    if (masked) return masked;
+  }
+  if (field === 'clientRg') {
+    const masked = maskRg(val);
+    if (masked) return masked;
+  }
+  return val;
+}
+
+function newContract() {
+  contract = {};
+  step = 0;
+  document.getElementById('chat-area').innerHTML = '';
+  goTab('chat');
+  showStep(0);
+}
+
+// ── SETTINGS ──
+function loadSettings() {
+  const saved = JSON.parse(localStorage.getItem('tsp_co') || 'null');
+  if (saved) co = saved;
+  document.getElementById('s-name').value = co.name;
+  document.getElementById('s-cnpj').value = co.cnpj;
+  document.getElementById('s-addr').value = co.addr;
+  document.getElementById('s-city').value = co.city;
+  document.getElementById('s-tel').value = co.tel;
+  document.getElementById('s-email').value = co.email;
+  document.getElementById('co-name-header').textContent = co.name;
+}
+
+function saveSettings() {
+  co.name  = document.getElementById('s-name').value.trim() || co.name;
+  co.cnpj  = document.getElementById('s-cnpj').value.trim() || co.cnpj;
+  co.addr  = document.getElementById('s-addr').value.trim() || co.addr;
+  co.city  = document.getElementById('s-city').value.trim() || co.city;
+  co.tel   = document.getElementById('s-tel').value.trim() || co.tel;
+  co.email = document.getElementById('s-email').value.trim() || co.email;
+  localStorage.setItem('tsp_co', JSON.stringify(co));
+  document.getElementById('co-name-header').textContent = co.name;
+  alert('✅ Dados da empresa salvos!');
+  goTab('chat');
+}
+
+// ── HELPERS ──
+function fmt(v) {
+  if (!v) return '0,00';
+  const n = parseFloat(String(v).replace(',','.'));
+  return isNaN(n) ? v : n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function calcRest(total, entry) {
+  const t = parseFloat(String(total).replace(',','.'));
+  const e = parseFloat(String(entry).replace(',','.'));
+  return isNaN(t)||isNaN(e) ? '?' : (t-e).toFixed(2).replace('.',',');
+}
+
+function extenso(v) {
+  const n = parseFloat(String(v).replace(',','.'));
+  if (isNaN(n)) return v;
+  const map = {
+    1:'um',2:'dois',3:'três',4:'quatro',5:'cinco',6:'seis',7:'sete',8:'oito',9:'nove',
+    10:'dez',11:'onze',12:'doze',13:'treze',14:'quatorze',15:'quinze',
+    16:'dezesseis',17:'dezessete',18:'dezoito',19:'dezenove',
+    20:'vinte',30:'trinta',40:'quarenta',50:'cinquenta',
+    60:'sessenta',70:'setenta',80:'oitenta',90:'noventa',
+    100:'cem',200:'duzentos',300:'trezentos',400:'quatrocentos',500:'quinhentos',
+    600:'seiscentos',700:'setecentos',800:'oitocentos',900:'novecentos',
+    1000:'mil'
+  };
+  if (n === 0) return 'zero reais';
+  let int = Math.floor(n);
+  let res = '';
+  if (int >= 1000) {
+    const m = Math.floor(int/1000);
+    res += (m===1?'mil':(map[m]||m)+' mil');
+    int = int % 1000;
+    if (int > 0) res += ' e ';
+  }
+  if (int >= 100) {
+    const c = Math.floor(int/100)*100;
+    res += (int===100?'cem':map[c]||'');
+    int = int % 100;
+    if (int > 0) res += ' e ';
+  }
+  if (int >= 20) {
+    const d = Math.floor(int/10)*10;
+    res += map[d]||'';
+    int = int % 10;
+    if (int > 0) res += ' e ';
+  }
+  if (int > 0) res += map[int]||int;
+  return res.trim() + ' reais';
+}
+</script>
+</body>
+</html>
